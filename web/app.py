@@ -6,8 +6,10 @@ option_b = os.getenv('OPTION_B', "Dogs")
 option_c = os.getenv('OPTION_C', "Whales")
 vote = option_a
 
-db = os.getenv('DB')
+db = os.getenv('DB', False)
+db_exists = False
 debug = os.getenv('DEBUG', False)
+threaded = os.getenv('THREADED', False)
 
 option_a_images = os.listdir('./static/option_a')
 option_b_images = os.listdir('./static/option_b')
@@ -15,14 +17,16 @@ option_c_images = os.listdir('./static/option_c')
 
 
 healthy = True
-version ='2.0'
+version ='1.0'
 hostname = socket.gethostname()
 
-sys.stdout.write("Starting web container")
+print "Starting web container %s" % hostname
 
 app = Flask(__name__)
 
 if db:
+
+    db_exists = True
 
     if ':' in db:
         (address, port) = db.split(':')
@@ -31,7 +35,7 @@ if db:
         port = 8500
         db = address + ':' + str(port)
 
-    time.sleep(10)
+    time.sleep(5)
     
     #Connect to Consul
     c = consul.Consul(host=address, port=port)
@@ -50,7 +54,7 @@ def index():
     vote_cookie = request.cookies.get('vote')
 
     
-    if db is None:
+    if db is False:
         vote = option_b
     elif vote_cookie is None:
         return redirect('/vote')
@@ -69,10 +73,12 @@ def index():
         newHits = int(hits["Value"]) + 1
         c.kv.put('hits', str(newHits))
         hit_string = str(newHits) + " Pets Served"
+
     if not db:
         hit_string = ""
+        db_exists == str(db_exists)
 
-    return render_template('pets.html', url=url, hostname=hostname, hit_string=hit_string, title=vote, version=version)
+    return render_template('pets.html', url=url, hostname=hostname, hit_string=hit_string, title=vote, version=version, db_exists=db_exists)
 
 @app.route("/vote", methods=['POST','GET'])
 def vote():
@@ -126,7 +132,7 @@ def health():
     global healthy
     if request.method == 'GET':
         if healthy:
-            return 'OK', 200
+            return 'OK', 1.0
         else:
             return 'NOT OK', 500
     elif request.method == 'PUT':
@@ -138,6 +144,12 @@ def health():
                 return "not healthy"
     else:
         return 'ERROR REQUEST MTHD', 500
+
+@app.route('/kill')
+def kill():
+    global healthy
+    healthy = False
+    return 'You have toggled web instance ' + hostname +' to unhealthy', 1.0
 
 
 def get_image(vote):
@@ -158,4 +170,4 @@ def get_image(vote):
 #curl -v http://localhost:8000/health
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=debug)
+    app.run(host="0.0.0.0", port=5000, debug=debug, threaded=threaded)
