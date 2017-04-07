@@ -1,0 +1,31 @@
+version: '3.1'
+services:
+    web:
+        image: nicolaka/pets_web:1.0
+        deploy:
+            mode: replicated
+            replicas: 1
+        healthcheck:
+            interval: 10s
+            timeout: 2s
+            retries: 3
+        environment:
+            DB: 'kv'
+            DEBUG: 'True'
+        networks:
+            - pets
+            - ucp-hrm
+    kv:
+        image: nicolaka/pets_kv:1.0
+        command: agent -server -ui -client=0.0.0.0 -bootstrap-expect=3 -retry-join=kv -retry-join=kv -retry-join=kv -retry-interval 5s
+        deploy:
+            replicas: 3
+        environment:
+            CONSUL_BIND_INTERFACE: 'eth0'
+            CONSUL_LOCAL_CONFIG: '{"skip_leave_on_interrupt": true}'
+        networks: 
+            - pets
+networks:
+    pets:
+    ucp-hrm:
+        external: true
