@@ -1,4 +1,4 @@
-version: '3.2'
+version: '3.1'
 services:
     web:
         image: nicolaka/pets_web:1.0
@@ -27,6 +27,5 @@ services:
             - pets
 networks:
     pets:
-     attachable: true
     ucp-hrm:
         external: true
